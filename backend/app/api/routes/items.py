@@ -2,11 +2,13 @@ import os
 import shutil
 import uuid
 
-from fastapi import APIRouter, File, Form, UploadFile, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db
+from app.models.item import Item
 
 router = APIRouter()
-
-ITEMS_DB = []
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -22,6 +24,7 @@ async def create_item(
     notes: str = Form(""),
     front_image: UploadFile = File(...),
     back_image: UploadFile = File(...),
+    db: Session = Depends(get_db),
 ):
     if not front_image.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Front image must be an image file")
@@ -43,26 +46,55 @@ async def create_item(
     with open(back_path, "wb") as buffer:
         shutil.copyfileobj(back_image.file, buffer)
 
-    item = {
-        "id": item_id,
-        "title": title,
-        "price": price,
-        "quantity": quantity,
-        "size": size,
-        "color": color,
-        "notes": notes,
-        "front_image_path": front_path,
-        "back_image_path": back_path,
-    }
+    item = Item(
+        id=item_id,
+        title=title,
+        price=price,
+        quantity=quantity,
+        size=size,
+        color=color,
+        notes=notes,
+        front_image_path=front_path,
+        back_image_path=back_path,
+    )
 
-    ITEMS_DB.append(item)
+    db.add(item)
+    db.commit()
+    db.refresh(item)
 
     return {
         "message": "Item created successfully",
-        "item": item,
+        "item": {
+            "id": item.id,
+            "title": item.title,
+            "price": item.price,
+            "quantity": item.quantity,
+            "size": item.size,
+            "color": item.color,
+            "notes": item.notes,
+            "front_image_path": item.front_image_path,
+            "back_image_path": item.back_image_path,
+        },
     }
 
 
 @router.get("/items")
-def list_items():
-    return {"items": ITEMS_DB}
+def list_items(db: Session = Depends(get_db)):
+    items = db.query(Item).all()
+
+    return {
+        "items": [
+            {
+                "id": item.id,
+                "title": item.title,
+                "price": item.price,
+                "quantity": item.quantity,
+                "size": item.size,
+                "color": item.color,
+                "notes": item.notes,
+                "front_image_path": item.front_image_path,
+                "back_image_path": item.back_image_path,
+            }
+            for item in items
+        ]
+    }

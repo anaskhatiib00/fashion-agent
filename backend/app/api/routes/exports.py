@@ -1,9 +1,12 @@
 import os
-from fastapi import APIRouter
+
+from fastapi import APIRouter, Depends
 from fastapi.responses import FileResponse
 from openpyxl import Workbook
+from sqlalchemy.orm import Session
 
-from app.api.routes.items import ITEMS_DB
+from app.core.database import get_db
+from app.models.item import Item
 
 router = APIRouter()
 
@@ -12,7 +15,9 @@ os.makedirs(EXPORT_DIR, exist_ok=True)
 
 
 @router.get("/items/export")
-def export_items():
+def export_items(db: Session = Depends(get_db)):
+    items = db.query(Item).all()
+
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "Items"
@@ -29,17 +34,17 @@ def export_items():
         "Back Image Path",
     ])
 
-    for item in ITEMS_DB:
+    for item in items:
         sheet.append([
-            item["id"],
-            item["title"],
-            item["price"],
-            item["quantity"],
-            item["size"],
-            item["color"],
-            item["notes"],
-            item["front_image_path"],
-            item["back_image_path"],
+            item.id,
+            item.title,
+            item.price,
+            item.quantity,
+            item.size,
+            item.color,
+            item.notes,
+            item.front_image_path,
+            item.back_image_path,
         ])
 
     file_path = os.path.join(EXPORT_DIR, "items.xlsx")
