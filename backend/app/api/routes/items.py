@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.item import Item
+from app.services.ai import generate_caption
 
 router = APIRouter()
 
@@ -26,10 +27,10 @@ async def create_item(
     back_image: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
-    if not front_image.content_type.startswith("image/"):
+    if not front_image.content_type or not front_image.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Front image must be an image file")
 
-    if not back_image.content_type.startswith("image/"):
+    if not back_image.content_type or not back_image.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Back image must be an image file")
 
     item_id = str(uuid.uuid4())
@@ -56,11 +57,31 @@ async def create_item(
         notes=notes,
         front_image_path=front_path,
         back_image_path=back_path,
+        ai_output=None,
     )
 
     db.add(item)
     db.commit()
     db.refresh(item)
+
+    try:
+        ai_result = generate_caption(
+            {
+                "title": title,
+                "price": price,
+                "quantity": quantity,
+                "size": size,
+                "color": color,
+                "notes": notes,
+            }
+        )
+        item.ai_output = ai_result
+        db.commit()
+        db.refresh(item)
+    except Exception as error:
+        item.ai_output = f"AI generation failed: {str(error)}"
+        db.commit()
+        db.refresh(item)
 
     return {
         "message": "Item created successfully",
@@ -74,6 +95,7 @@ async def create_item(
             "notes": item.notes,
             "front_image_path": item.front_image_path,
             "back_image_path": item.back_image_path,
+            "ai_output": item.ai_output,
         },
     }
 
@@ -94,6 +116,7 @@ def list_items(db: Session = Depends(get_db)):
                 "notes": item.notes,
                 "front_image_path": item.front_image_path,
                 "back_image_path": item.back_image_path,
+                "ai_output": item.ai_output,
             }
             for item in items
         ]

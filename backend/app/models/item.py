@@ -15,3 +15,4 @@ class Item(Base):
     notes = Column(Text, nullable=True)
     front_image_path = Column(String, nullable=False)
     back_image_path = Column(String, nullable=False)
+    ai_output = Column(Text, nullable=True)
