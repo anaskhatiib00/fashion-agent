@@ -1,6 +1,21 @@
 import { useEffect, useState } from "react"
 import { createItem, getItems, getExportUrl } from "./services/api"
 
+function parseAiOutput(aiOutput) {
+  if (!aiOutput) return null
+
+  try {
+    return JSON.parse(aiOutput)
+  } catch {
+    return {
+      title: "",
+      description: "",
+      caption: aiOutput,
+      hashtags: [],
+    }
+  }
+}
+
 function App() {
   const [title, setTitle] = useState("")
   const [price, setPrice] = useState("")
@@ -172,37 +187,55 @@ function App() {
         <p>No items yet.</p>
       ) : (
         <div style={{ display: "grid", gap: "16px" }}>
-          {items.map((item) => (
-            <div
-              key={item.id}
-              style={{
-                border: "1px solid #ddd",
-                borderRadius: "8px",
-                padding: "16px",
-              }}
-            >
-              <h3>{item.title}</h3>
-              <p><strong>Price:</strong> {item.price}</p>
-              <p><strong>Quantity:</strong> {item.quantity}</p>
-              <p><strong>Size:</strong> {item.size}</p>
-              <p><strong>Color:</strong> {item.color}</p>
-              <p><strong>Notes:</strong> {item.notes || "No notes"}</p>
+          {items.map((item) => {
+            const ai = parseAiOutput(item.ai_output)
 
+            return (
               <div
+                key={item.id}
                 style={{
-                  marginTop: "12px",
-                  padding: "12px",
-                  background: "#f7f7f7",
-                  borderRadius: "6px",
+                  border: "1px solid #ddd",
+                  borderRadius: "8px",
+                  padding: "16px",
                 }}
               >
-                <strong>AI Output:</strong>
-                <pre style={{ whiteSpace: "pre-wrap", marginTop: "8px" }}>
-                  {item.ai_output || "No AI output yet"}
-                </pre>
+                <h3>{item.title}</h3>
+                <p><strong>Price:</strong> {item.price}</p>
+                <p><strong>Quantity:</strong> {item.quantity}</p>
+                <p><strong>Size:</strong> {item.size}</p>
+                <p><strong>Color:</strong> {item.color}</p>
+                <p><strong>Notes:</strong> {item.notes || "No notes"}</p>
+
+                <div
+                  style={{
+                    marginTop: "12px",
+                    padding: "12px",
+                    background: "#f7f7f7",
+                    borderRadius: "6px",
+                  }}
+                >
+                  <strong>AI Content:</strong>
+
+                  <p style={{ marginTop: "10px" }}>
+                    <strong>AI Title:</strong> {ai?.title || "No AI title"}
+                  </p>
+
+                  <p>
+                    <strong>Description:</strong> {ai?.description || "No description"}
+                  </p>
+
+                  <p>
+                    <strong>Caption:</strong> {ai?.caption || "No caption"}
+                  </p>
+
+                  <p>
+                    <strong>Hashtags:</strong>{" "}
+                    {ai?.hashtags?.length ? ai.hashtags.join(" ") : "No hashtags"}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

@@ -1,4 +1,5 @@
 import json
+
 from openai import OpenAI
 
 
@@ -9,26 +10,22 @@ def generate_caption(item):
         prompt = f"""
 You are a fashion marketing expert.
 
-Create:
-- product title
-- short description
-- Instagram caption
-- hashtags
+Create marketing content for this clothing item.
 
 Item details:
-Title: {item["title"]}
-Price: {item["price"]}
-Quantity: {item["quantity"]}
-Size: {item["size"]}
-Color: {item["color"]}
-Notes: {item["notes"]}
+- Title: {item["title"]}
+- Price: {item["price"]}
+- Quantity: {item["quantity"]}
+- Size: {item["size"]}
+- Color: {item["color"]}
+- Notes: {item["notes"]}
 
-Return valid JSON only in this format:
+Return valid JSON only in exactly this format:
 {{
-  "title": "...",
-  "description": "...",
-  "caption": "...",
-  "hashtags": ["...", "..."]
+  "title": "short improved product title",
+  "description": "short product description",
+  "caption": "instagram-ready caption with price and quantity",
+  "hashtags": ["#tag1", "#tag2", "#tag3"]
 }}
 """
 
@@ -39,11 +36,21 @@ Return valid JSON only in this format:
         )
 
         content = response.choices[0].message.content
-        return content if content else json.dumps({
+
+        if not content:
+            return json.dumps({
+                "title": item["title"],
+                "description": "",
+                "caption": "",
+                "hashtags": []
+            })
+
+        return content
+
+    except Exception as error:
+        return json.dumps({
             "title": item["title"],
             "description": "",
-            "caption": "",
+            "caption": f"AI generation failed: {str(error)}",
             "hashtags": []
         })
-    except Exception as error:
-        return f"AI generation failed: {str(error)}"
