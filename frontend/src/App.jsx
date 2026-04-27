@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react"
-import { createItem, getItems, getExportUrl, getInstagramLoginUrl } from "./services/api"
+import {
+  createItem,
+  getItems,
+  getExportUrl,
+  getInstagramLoginUrl,
+  getConnectedInstagramAccount,
+} from "./services/api"
 
 function parseAiOutput(aiOutput) {
   if (!aiOutput) return null
@@ -28,6 +34,7 @@ function App() {
   const [message, setMessage] = useState("")
   const [loading, setLoading] = useState(false)
   const [items, setItems] = useState([])
+  const [connectedAccount, setConnectedAccount] = useState(null)
 
   const loadItems = async () => {
     try {
@@ -38,8 +45,18 @@ function App() {
     }
   }
 
+  const loadConnectedAccount = async () => {
+    try {
+      const data = await getConnectedInstagramAccount()
+      setConnectedAccount(data.connected ? data.account : null)
+    } catch (error) {
+      console.error("Failed to load connected account", error)
+    }
+  }
+
   useEffect(() => {
     loadItems()
+    loadConnectedAccount()
   }, [])
 
   const handleSubmit = async (e) => {
@@ -90,11 +107,12 @@ function App() {
     >
       <h1>Fashion Agent</h1>
       <p>Add a clothing item</p>
+
       <a
         href={getInstagramLoginUrl()}
         style={{
           display: "inline-block",
-          marginBottom: "20px",
+          marginBottom: "12px",
           padding: "10px 16px",
           background: "#E1306C",
           color: "#fff",
@@ -104,6 +122,16 @@ function App() {
       >
         Connect Instagram
       </a>
+
+      {connectedAccount ? (
+        <p style={{ color: "green", fontWeight: "bold" }}>
+          Connected to {connectedAccount.page_name} ✅
+        </p>
+      ) : (
+        <p style={{ color: "#666" }}>
+          Instagram/Facebook Page not connected yet.
+        </p>
+      )}
 
       <form
         onSubmit={handleSubmit}
@@ -214,11 +242,21 @@ function App() {
                 }}
               >
                 <h3>{item.title}</h3>
-                <p><strong>Price:</strong> {item.price}</p>
-                <p><strong>Quantity:</strong> {item.quantity}</p>
-                <p><strong>Size:</strong> {item.size}</p>
-                <p><strong>Color:</strong> {item.color}</p>
-                <p><strong>Notes:</strong> {item.notes || "No notes"}</p>
+                <p>
+                  <strong>Price:</strong> {item.price}
+                </p>
+                <p>
+                  <strong>Quantity:</strong> {item.quantity}
+                </p>
+                <p>
+                  <strong>Size:</strong> {item.size}
+                </p>
+                <p>
+                  <strong>Color:</strong> {item.color}
+                </p>
+                <p>
+                  <strong>Notes:</strong> {item.notes || "No notes"}
+                </p>
 
                 <div
                   style={{
@@ -235,7 +273,8 @@ function App() {
                   </p>
 
                   <p>
-                    <strong>Description:</strong> {ai?.description || "No description"}
+                    <strong>Description:</strong>{" "}
+                    {ai?.description || "No description"}
                   </p>
 
                   <p>
@@ -244,7 +283,9 @@ function App() {
 
                   <p>
                     <strong>Hashtags:</strong>{" "}
-                    {ai?.hashtags?.length ? ai.hashtags.join(" ") : "No hashtags"}
+                    {ai?.hashtags?.length
+                      ? ai.hashtags.join(" ")
+                      : "No hashtags"}
                   </p>
                 </div>
               </div>

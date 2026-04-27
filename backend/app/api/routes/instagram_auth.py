@@ -2,8 +2,12 @@ import os
 from urllib.parse import urlencode
 
 import requests
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db
+from app.models.social_account import SocialAccount
 
 router = APIRouter()
 
@@ -16,8 +20,6 @@ META_ME_ACCOUNTS_URL = "https://graph.facebook.com/v20.0/me/accounts"
 def instagram_login():
     app_id = os.getenv("INSTAGRAM_APP_ID")
     redirect_uri = os.getenv("INSTAGRAM_REDIRECT_URI")
-
-    print("INSTAGRAM_APP_ID:", app_id)
 
     if not app_id or not redirect_uri:
         raise HTTPException(status_code=500, detail="Instagram env variables are missing")
@@ -36,7 +38,7 @@ def instagram_login():
 
 
 @router.get("/auth/instagram/callback")
-def instagram_callback(code: str):
+def instagram_callback(code: str, db: Session = Depends(get_db)):
     app_id = os.getenv("INSTAGRAM_APP_ID")
     app_secret = os.getenv("INSTAGRAM_APP_SECRET")
     redirect_uri = os.getenv("INSTAGRAM_REDIRECT_URI")
@@ -45,14 +47,16 @@ def instagram_callback(code: str):
     if not app_id or not app_secret or not redirect_uri:
         raise HTTPException(status_code=500, detail="Instagram env variables are missing")
 
-    token_params = {
-        "client_id": app_id,
-        "client_secret": app_secret,
-        "redirect_uri": redirect_uri,
-        "code": code,
-    }
+    token_response = requests.get(
+        META_TOKEN_URL,
+        params={
+            "client_id": app_id,
+            "client_secret": app_secret,
+            "redirect_uri": redirect_uri,
+            "code": code,
+        },
+    )
 
-    token_response = requests.get(META_TOKEN_URL, params=token_params)
     token_data = token_response.json()
 
     if "access_token" not in token_data:
@@ -69,19 +73,55 @@ def instagram_callback(code: str):
     )
 
     pages_data = pages_response.json()
-    print("PAGES DATA:", pages_data)
 
     if "error" in pages_data:
         raise HTTPException(status_code=400, detail=pages_data)
 
-    if pages_data.get("data"):
-        first_page = pages_data["data"][0]
-        page_id = first_page["id"]
-        page_name = first_page["name"]
-        page_access_token = first_page.get("access_token")
+    if not pages_data.get("data"):
+        raise HTTPException(status_code=400, detail="No Facebook pages found")
 
-        print("PAGE ID:", page_id)
-        print("PAGE NAME:", page_name)
-        print("PAGE TOKEN:", page_access_token)
+    first_page = pages_data["data"][0]
+
+    page_id = first_page["id"]
+    page_name = first_page["name"]
+    page_access_token = first_page["access_token"]
+
+    existing_account = (
+        db.query(SocialAccount)
+        .filter(SocialAccount.page_id == page_id)
+        .first()
+    )
+
+    if existing_account:
+        existing_account.page_name = page_name
+        existing_account.page_access_token = page_access_token
+    else:
+        social_account = SocialAccount(
+            platform="facebook",
+            page_id=page_id,
+            page_name=page_name,
+            page_access_token=page_access_token,
+        )
+        db.add(social_account)
+
+    db.commit()
 
     return RedirectResponse(f"{frontend_url}?instagram_connected=true")
+
+
+@router.get("/auth/instagram/account")
+def get_connected_account(db: Session = Depends(get_db)):
+    account = db.query(SocialAccount).first()
+
+    if not account:
+        return {"connected": False, "account": None}
+
+    return {
+        "connected": True,
+        "account": {
+            "id": account.id,
+            "platform": account.platform,
+            "page_id": account.page_id,
+            "page_name": account.page_name,
+        },
+    }

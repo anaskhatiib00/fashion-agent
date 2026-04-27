@@ -32,3 +32,14 @@ export function getExportUrl() {
 export function getInstagramLoginUrl() {
   return `${API_URL}/api/auth/instagram/login`
 }
+
+export async function getConnectedInstagramAccount() {
+  const response = await fetch(`${API_URL}/api/auth/instagram/account`)
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch connected Instagram account")
+  }
+
+  return response.json()
+}
+
