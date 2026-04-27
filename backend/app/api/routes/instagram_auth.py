@@ -15,8 +15,9 @@ META_ME_ACCOUNTS_URL = "https://graph.facebook.com/v20.0/me/accounts"
 @router.get("/auth/instagram/login")
 def instagram_login():
     app_id = os.getenv("INSTAGRAM_APP_ID")
-    print("INSTAGRAM_APP_ID:", app_id)
     redirect_uri = os.getenv("INSTAGRAM_REDIRECT_URI")
+
+    print("INSTAGRAM_APP_ID:", app_id)
 
     if not app_id or not redirect_uri:
         raise HTTPException(status_code=500, detail="Instagram env variables are missing")
@@ -63,15 +64,24 @@ def instagram_callback(code: str):
         META_ME_ACCOUNTS_URL,
         params={
             "access_token": access_token,
-            "fields": "id,name,instagram_business_account",
+            "fields": "id,name,access_token",
         },
     )
 
     pages_data = pages_response.json()
+    print("PAGES DATA:", pages_data)
 
     if "error" in pages_data:
         raise HTTPException(status_code=400, detail=pages_data)
 
-    return RedirectResponse(
-        f"{frontend_url}?instagram_connected=true"
-    )
+    if pages_data.get("data"):
+        first_page = pages_data["data"][0]
+        page_id = first_page["id"]
+        page_name = first_page["name"]
+        page_access_token = first_page.get("access_token")
+
+        print("PAGE ID:", page_id)
+        print("PAGE NAME:", page_name)
+        print("PAGE TOKEN:", page_access_token)
+
+    return RedirectResponse(f"{frontend_url}?instagram_connected=true")
