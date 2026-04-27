@@ -9,6 +9,8 @@ from app.api.routes.items import router as items_router
 from app.core.database import Base, engine
 from app.models import Item
 
+from app.api.routes.instagram_auth import router as instagram_auth_router
+
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Fashion Agent API")
@@ -23,6 +25,7 @@ app.add_middleware(
 
 app.include_router(items_router, prefix="/api")
 app.include_router(exports_router, prefix="/api")
+app.include_router(instagram_auth_router, prefix="/api")
 
 
 @app.get("/")

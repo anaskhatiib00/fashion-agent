@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { createItem, getItems, getExportUrl } from "./services/api"
+import { createItem, getItems, getExportUrl, getInstagramLoginUrl } from "./services/api"
 
 function parseAiOutput(aiOutput) {
   if (!aiOutput) return null
@@ -90,6 +90,20 @@ function App() {
     >
       <h1>Fashion Agent</h1>
       <p>Add a clothing item</p>
+      <a
+        href={getInstagramLoginUrl()}
+        style={{
+          display: "inline-block",
+          marginBottom: "20px",
+          padding: "10px 16px",
+          background: "#E1306C",
+          color: "#fff",
+          textDecoration: "none",
+          borderRadius: "6px",
+        }}
+      >
+        Connect Instagram
+      </a>
 
       <form
         onSubmit={handleSubmit}

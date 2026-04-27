@@ -28,3 +28,7 @@ export async function getItems() {
 export function getExportUrl() {
   return `${API_URL}/api/items/export`
 }
+
+export function getInstagramLoginUrl() {
+  return `${API_URL}/api/auth/instagram/login`
+}
